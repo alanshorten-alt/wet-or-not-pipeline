@@ -77,9 +77,26 @@ if (dryRun) {
   process.exit(0);
 }
 
-const { R2_ACCOUNT_ID, R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY } = process.env;
+// Pasted secrets often carry a trailing space or newline, so trim before use.
+const env = (n) => (process.env[n] ?? "").trim();
+const R2_ACCOUNT_ID = env("R2_ACCOUNT_ID");
+const R2_BUCKET = env("R2_BUCKET");
+const R2_ACCESS_KEY_ID = env("R2_ACCESS_KEY_ID");
+const R2_SECRET_ACCESS_KEY = env("R2_SECRET_ACCESS_KEY");
 if (!R2_ACCOUNT_ID || !R2_BUCKET || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
   console.error("Missing R2 env vars (R2_ACCOUNT_ID, R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)");
+  process.exit(1);
+}
+// A wrong account id makes the endpoint host name invalid, which shows up as an opaque TLS
+// "handshake failure". Check the shape here so the error names the real problem.
+if (!/^[0-9a-f]{32}$/i.test(R2_ACCOUNT_ID)) {
+  console.error(
+    `R2_ACCOUNT_ID must be exactly the 32-character account id (the part before .r2.cloudflarestorage.com), not a URL; got ${R2_ACCOUNT_ID.length} characters.`,
+  );
+  process.exit(1);
+}
+if (/[/:\s]/.test(R2_BUCKET)) {
+  console.error("R2_BUCKET must be just the bucket name, for example wet-or-not-data.");
   process.exit(1);
 }
 
