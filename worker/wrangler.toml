@@ -6,6 +6,6 @@ compatibility_date = "2026-11-01"
 crons = ["*/5 * * * *"]
 
 [vars]
-REPO = "alanshorten-alt/wet-or-not"
+REPO = "alanshorten-alt/wet-or-not-pipeline"
 WORKFLOW = "radar.yml"
 REF = "main"

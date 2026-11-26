@@ -4,7 +4,7 @@ Calls GitHub's `workflow_dispatch` for `radar.yml` every 5 minutes. No radar wor
 
 ## Deploy (Alan, once)
 
-1. GitHub: Settings > Developer settings > Fine-grained tokens > new token, repository access: only `wet-or-not`, permission `Actions: Read and write`. Copy it once.
+1. GitHub: Settings > Developer settings > Fine-grained tokens > new token, repository access: only `wet-or-not-pipeline`, permission `Actions: Read and write`. Copy it once.
 2. Cloudflare: Workers & Pages > Create > Worker, name `wet-or-not-cron`, paste `index.js`, deploy.
 3. Worker > Settings > Variables and secrets: add `REPO`, `WORKFLOW`, `REF` (values in `wrangler.toml`) and a **secret** `GITHUB_TOKEN` with the token. Do not paste the token in chat or commit it.
 4. Worker > Settings > Triggers > Cron: `*/5 * * * *`.
