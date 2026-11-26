@@ -1,0 +1,11 @@
+name = "wet-or-not-cron"
+main = "index.js"
+compatibility_date = "2026-11-01"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[vars]
+REPO = "alanshorten-alt/wet-or-not"
+WORKFLOW = "radar.yml"
+REF = "main"

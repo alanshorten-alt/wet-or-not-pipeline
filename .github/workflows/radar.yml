@@ -1,0 +1,45 @@
+name: Radar run
+# Ingest the newest Met Éireann radar pair, nowcast, publish to R2.
+# Triggered every 5 minutes by the Cloudflare Worker (worker/). The hourly
+# schedule below is only a backstop in case the Worker stops.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
+permissions:
+  contents: read
+# One run at a time; a late run is skipped rather than queued behind the next.
+concurrency:
+  group: radar
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      DATA_BASE_URL: ${{ vars.DATA_BASE_URL || 'https://pub-5865fb6ba4364fdbb3aca09ee0f4d672.r2.dev/live' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: pip install -r pipeline/requirements.txt
+      - run: npm ci
+      - name: Build frame and nowcast
+        id: build
+        shell: bash  # explicit bash enables pipefail, so a failed run cannot look like "no change"
+        run: python pipeline/run_radar.py --out out --base-url "$DATA_BASE_URL" | tee run.log && grep '^changed=' run.log >> "$GITHUB_OUTPUT"
+      - name: Publish to R2
+        if: steps.build.outputs.changed == 'true'
+        run: node pipeline/publish.mjs out --prefix live --prune
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}

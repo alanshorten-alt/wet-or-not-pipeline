@@ -1,0 +1,11 @@
+{
+  "generatedAt": "2026-11-26T15:00:00Z",
+  "radarFiles": [],
+  "nowcastFile": "nowcast.json",
+  "groundFile": "ground.json",
+  "freshness": {
+    "ingest": { "sourceTime": "2026-11-26T15:00:00Z", "stale": false },
+    "nowcast": { "sourceTime": "2026-11-26T15:00:00Z", "stale": false },
+    "ground": { "sourceTime": "2026-11-26T14:00:00Z", "stale": false }
+  }
+}

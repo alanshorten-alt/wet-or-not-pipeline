@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-11-26T15:00:00Z",
+  "sourceTime": "2026-11-26T14:00:00Z",
+  "regions": [
+    {
+      "stationId": "casement",
+      "name": "Casement Aerodrome",
+      "lat": 53.3,
+      "lng": -6.44,
+      "rainNow": "no",
+      "rain24hMm": { "median": 1.2, "low": 0.8, "high": 1.6 },
+      "stationCount": 3,
+      "wetness": "damp",
+      "readingAgeMin": 22
+    }
+  ]
+}

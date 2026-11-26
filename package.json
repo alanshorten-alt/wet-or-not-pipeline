@@ -1,0 +1,11 @@
+{
+  "name": "wet-or-not-pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Radar ingest, nowcast and R2 publisher for Wet or Not",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1178.0",
+    "zod": "^4.6.7"
+  }
+}
