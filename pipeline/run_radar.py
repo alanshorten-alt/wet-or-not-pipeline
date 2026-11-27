@@ -23,6 +23,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from nowcast import build_nowcast  # noqa: E402
+from stations import build_ground  # noqa: E402
 from radar import DUBLIN, SHANNON, build_frame, load_clutter_mask, make_grid, read_volume  # noqa: E402
 
 BASE = "https://opendata2.met.ie/radar"
@@ -67,6 +68,10 @@ def build(pair, grid, mask, tmp) -> dict:
         paths.append(p)
     vols = [(read_volume(paths[0]), DUBLIN), (read_volume(paths[1]), SHANNON)]
     return build_frame(vols, grid, clutter_mask=mask)
+
+
+def now_utc() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def fetch_json(url: str):
@@ -137,11 +142,15 @@ def main() -> None:
     with open(os.path.join(a.out, "nowcast.json"), "w") as fh:
         json.dump(nowcast, fh, separators=(",", ":"))
 
-    # Ground engine does not exist yet: carry the last ground file forward, else publish an
-    # empty one marked stale so the app shows "no station data" instead of pretending.
+    # Stations engine: gauge file is hourly and lags 30-90 minutes. If it fails, keep the last ground
+    # file (its readings age on screen) instead of failing the radar run.
     ground = fetch_json(f"{base_url}/ground.json")
-    if not ground:
-        ground = {"generatedAt": nowcast["generatedAt"], "sourceTime": NEVER, "regions": []}
+    try:
+        ground = build_ground(now_utc(), ground)
+    except Exception as e:  # noqa: BLE001
+        print(f"stations engine failed, keeping the previous ground file: {e}")
+        if not ground:
+            ground = {"generatedAt": nowcast["generatedAt"], "sourceTime": NEVER, "regions": []}
     with open(os.path.join(a.out, "ground.json"), "w") as fh:
         json.dump(ground, fh, separators=(",", ":"))
 
