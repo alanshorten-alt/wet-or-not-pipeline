@@ -2,7 +2,7 @@
 
     python pipeline/pitches.py ireland.osm.pbf out/pitches
 
-Reads closed ways tagged leisure=pitch, stadium or track and writes `<ix>_<iy>.json` (0.25 degree cells,
+Reads closed ways and multipolygon relations tagged leisure=pitch, stadium or track and writes `<ix>_<iy>.json` (0.25 degree cells,
 see PitchTileSchema in contracts/contracts.ts) plus `index.json` listing the cells that exist.
 Data (c) OpenStreetMap contributors, ODbL.
 """
@@ -55,21 +55,20 @@ def sport_of(tags) -> str | None:
 
 
 def read_pitches(pbf: str) -> list[dict]:
+    """Pitch, stadium and track outlines: closed ways and multipolygon relations (outer rings only, holes ignored)."""
     out = []
-    fp = osmium.FileProcessor(pbf).with_locations().with_filter(osmium.filter.KeyFilter("leisure"))
+    fp = osmium.FileProcessor(pbf).with_locations().with_areas(osmium.filter.KeyFilter("leisure")).with_filter(osmium.filter.KeyFilter("leisure"))
     for obj in fp:
-        if not obj.is_way() or not obj.is_closed():
+        if not obj.is_area():
             continue
         kind = obj.tags.get("leisure")
         if kind not in KINDS:
             continue
-        try:
-            coords = [(n.lon, n.lat) for n in obj.nodes]
-        except osmium.InvalidLocationError:
-            continue
-        ring = clean_ring(coords)
-        if ring:
-            out.append({"kind": kind, "sport": sport_of(obj.tags), "ring": ring})
+        sport = sport_of(obj.tags)
+        for ring_nodes in obj.outer_rings():
+            ring = clean_ring([(n.lon, n.lat) for n in ring_nodes])
+            if ring:
+                out.append({"kind": kind, "sport": sport, "ring": ring})
     return out
 
 
