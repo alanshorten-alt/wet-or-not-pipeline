@@ -9,6 +9,7 @@
 //   R2_ACCOUNT_ID, R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { gzipSync } from "node:zlib";
 import { DeleteObjectsCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { GroundSchema, ManifestSchema, NowcastSchema, RadarFrameSchema } from "../contracts/contracts.ts";
 
@@ -111,8 +112,11 @@ for (const f of ordered) {
     new PutObjectCommand({
       Bucket: R2_BUCKET,
       Key: key(f),
-      Body: bodies.get(f),
+      // Compressed here because R2's public URL doesn't compress: the nowcast is 1.4 MB as text and about 15 KB gzipped.
+      // Browsers undo the gzip transparently.
+      Body: gzipSync(bodies.get(f), { level: 9 }),
       ContentType: "application/json",
+      ContentEncoding: "gzip",
       CacheControl: cacheControl(f),
     }),
   );
