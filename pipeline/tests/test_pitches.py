@@ -26,13 +26,15 @@ def test_clean_ring_rounds_dedupes_and_rejects_open_or_tiny():
 def test_export_keeps_only_real_pitches_and_matches_the_contract_shape(tmp_path):
     out = tmp_path / "pitches"
     counts = export(SAMPLE, str(out))
-    assert counts == {"18_9": 1, "19_10": 1}
+    assert counts == {"18_9": 1, "19_10": 1, "10_4": 1}
     tile = json.loads((out / "18_9.json").read_text())
     assert tile["schemaVersion"] == 1 and (tile["ix"], tile["iy"]) == (18, 9)
     p = tile["pitches"][0]
     assert p["kind"] == "pitch" and p["sport"] == "gaelic_games" and p["ring"][0] == p["ring"][-1]
     index = json.loads((out / "index.json").read_text())
-    assert sorted(index["cells"]) == ["18_9", "19_10"]
+    assert sorted(index["cells"]) == ["10_4", "18_9", "19_10"]
+    track = json.loads((out / "10_4.json").read_text())["pitches"][0]
+    assert track["kind"] == "track" and track["sport"] == "running" and track["ring"][0] == track["ring"][-1]
 
 
 def test_export_replaces_old_tiles(tmp_path):
