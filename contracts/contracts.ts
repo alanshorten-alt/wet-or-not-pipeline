@@ -85,10 +85,34 @@ export const GroundRegionSchema = z.object({
   readingAgeMin: z.number().min(0),
 });
 
+/** One Met Éireann synoptic station, from the Latest Observations CSV (latest hour). */
+export const SynopticStationSchema = z.object({
+  stationId: z.string().min(1),
+  name: z.string().min(1),
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+  tempC: z.number().nullable(),
+  weather: z.string().nullable(),
+  /** Converted from knots. */
+  windKmh: z.number().min(0).nullable(),
+  gustKmh: z.number().min(0).nullable(),
+  /** Compass point the wind blows from, e.g. "SW". */
+  windFrom: z.string().nullable(),
+  humidityPct: z.number().min(0).max(100).nullable(),
+  /** Rain in the latest hour, mm. */
+  rainHourMm: z.number().min(0).nullable(),
+  pressureHpa: z.number().nullable(),
+  /** The CSV has no timestamp: this is the start of the latest whole hour before the fetch (assumed). */
+  observedAt: isoTime,
+  readingAgeMin: z.number().min(0),
+});
+
 export const GroundSchema = z.object({
   generatedAt: isoTime,
   sourceTime: isoTime,
   regions: z.array(GroundRegionSchema),
+  /** Synoptic stations. Empty until the synoptic engine has run. */
+  synoptic: z.array(SynopticStationSchema).default([]),
 });
 
 const FreshnessEntry = z.object({ sourceTime: isoTime, stale: z.boolean() });
@@ -110,5 +134,6 @@ export type Nowcast = z.infer<typeof NowcastSchema>;
 export type RainNow = z.infer<typeof RainNowSchema>;
 export type Wetness = z.infer<typeof WetnessSchema>;
 export type GroundRegion = z.infer<typeof GroundRegionSchema>;
+export type SynopticStation = z.infer<typeof SynopticStationSchema>;
 export type Ground = z.infer<typeof GroundSchema>;
 export type Manifest = z.infer<typeof ManifestSchema>;

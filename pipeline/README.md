@@ -11,6 +11,7 @@ Jobs write files that match `contracts/contracts.ts`; nothing else is shared bet
 | `radar.py`, `ingest_radar.py` | Decodes Dublin and Shannon polar volumes (ODIM HDF5) into a `RadarFrame` JSON on a 2.5 km lat/lng grid (about 191 x 151 cells). Prototype, not scheduled yet |
 | `compare_composite.py` | Manual check of our decoded rain against the hourly Dublin-Shannon composite |
 | `stations.py` | Stations engine: CAMP rain gauges (`pluvA.zip`, fetched with HTTP Range, about 3 MB a run) to `ground.json`: station name, 24 h rain (median, low, high of gauges within 10 km), wetness and reading age. Called from `run_radar.py` |
+| `synoptic.py` | Synoptic engine: Met Éireann Latest Observations CSV (25 stations, latest hour) to the `synoptic` list in `ground.json`: temperature, weather, wind and gust (knots converted to km/h), direction, humidity, hourly rain, pressure. The CSV has no coordinates or timestamp, so coordinates come from a table in the file and `observedAt` is the assumed start of the latest hour. Unknown station names are skipped, not guessed |
 
 Sources for v1 are Met Éireann only (CC BY 4.0). TII, Dublin City, Fingal, WOW-IE and Netatmo or private networks are excluded.
 
