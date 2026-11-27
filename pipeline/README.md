@@ -53,3 +53,13 @@ behind, so the engine never claims rain "now" from it: `rainNow` is `unsure` onc
 30 minutes, and every region carries `readingAgeMin`. The previous file is reused until the source changes,
 with ages advanced. If the engine fails, the last `ground.json` is kept and the radar run still publishes.
 Gauges with under 90% coverage of the last 24 hours or with large negative steps (bucket emptying) are dropped.
+
+## Clutter mask collector
+
+`.github/workflows/clutter.yml` runs daily. For yesterday it picks the dry hours (hourly composite with at
+most 2% of cells above 0.1 mm), records which cells still echo in those hours into
+`pipeline/clutter_days/<day>.json`, and rebuilds `pipeline/clutter_mask_candidate.json` from all days so
+far. A cell is only a candidate if it echoes in at least half of the dry slots on at least two days. The
+live `clutter_mask.json` changes only by a reviewed PR that copies the candidate over. Check
+`validate_hours.py --combine pipeline/clutter_days` for the summary. Met Éireann keeps about 7 days of
+archive; on 2026-11-27 all of 21-26 November was wet (driest hour 9.9% of cells), so nothing was collectable.
