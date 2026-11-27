@@ -10,7 +10,7 @@ Jobs write files that match `contracts/contracts.ts`; nothing else is shared bet
 | `publish.mjs` | Validates a folder of data files against the contracts, then uploads to R2 (manifest last). Use `--dry-run` to check without uploading |
 | `radar.py`, `ingest_radar.py` | Decodes Dublin and Shannon polar volumes (ODIM HDF5) into a `RadarFrame` JSON on a 2.5 km lat/lng grid (about 191 x 151 cells). Prototype, not scheduled yet |
 | `compare_composite.py` | Manual check of our decoded rain against the hourly Dublin-Shannon composite |
-| nowcast, ground | Not built yet |
+| `stations.py` | Stations engine: CAMP rain gauges (`pluvA.zip`, fetched with HTTP Range, about 3 MB a run) to `ground.json`: station name, 24 h rain (median, low, high of gauges within 10 km), wetness and reading age. Called from `run_radar.py` |
 
 Sources for v1 are Met Éireann only (CC BY 4.0). TII, Dublin City, Fingal, WOW-IE and Netatmo or private networks are excluded.
 
@@ -47,5 +47,8 @@ frames, 24 five-minute steps) and writes `radar/<scan>.json`, `nowcast.json`, `g
 `manifest.json` into `--out`. `publish.mjs --prune` uploads them and deletes frames the manifest no
 longer lists. `.github/workflows/radar.yml` runs it; `worker/` triggers it on time.
 
-Until the ground engine exists, `ground.json` is an empty file with `sourceTime` 1970 and `stale: true`,
-so the app shows "no station data" rather than a made-up reading.
+`ground.json` comes from `stations.py`. The CAMP file is rewritten about hourly and runs 30-90 minutes
+behind, so the engine never claims rain "now" from it: `rainNow` is `unsure` once a reading is older than
+30 minutes, and every region carries `readingAgeMin`. The previous file is reused until the source changes,
+with ages advanced. If the engine fails, the last `ground.json` is kept and the radar run still publishes.
+Gauges with under 90% coverage of the last 24 hours or with large negative steps (bucket emptying) are dropped.
