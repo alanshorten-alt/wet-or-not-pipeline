@@ -11,6 +11,7 @@ Exits 0 with no files written when there is no new scan yet, and prints
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import os
 import re
@@ -35,8 +36,13 @@ NEVER = "1970-01-01T00:00:00Z"
 
 
 def get(url: str, timeout: int = 60) -> bytes:
-    with urllib.request.urlopen(url, timeout=timeout) as r:
-        return r.read()
+    # Published files are stored gzipped (publish.mjs), and urllib does not undo Content-Encoding itself.
+    req = urllib.request.Request(url, headers={"Accept-Encoding": "gzip"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        body = r.read()
+        if r.headers.get("Content-Encoding", "").lower() == "gzip":
+            body = gzip.decompress(body)
+        return body
 
 
 def stamp(name: str) -> datetime:
