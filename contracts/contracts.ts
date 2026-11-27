@@ -115,6 +115,46 @@ export const GroundSchema = z.object({
   synoptic: z.array(SynopticStationSchema).default([]),
 });
 
+/** "Got it wrong": one tap in the app sends this snapshot of what the phone showed at the pin.
+ * generatedAt is when the person tapped; sourceTime is the radar scan the verdict used.
+ * No name, account or device id. The pin is rounded to 2 decimals (about 1 km).
+ * The Worker in worker/reports/ mirrors these limits by hand; worker/reports/validate.test.mjs keeps them in step. */
+export const FeedbackReportSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    generatedAt: isoTime,
+    sourceTime: isoTime,
+    place: z.object({ lat: z.number().min(51.2).max(55.6), lng: z.number().min(-10.9).max(-5.2) }).strict(),
+    verdict: z
+      .object({ state: z.enum(["dry", "showers", "wet"]), text: z.string().min(1).max(120) })
+      .strict(),
+    radar: z
+      .object({
+        ageMin: z.number().min(0).max(1440),
+        confidence: z.number().min(0).max(1),
+        motionKmh: z.object({ east: z.number().min(-300).max(300), north: z.number().min(-300).max(300) }).strict(),
+        /** Radar rain rate at the pin in the latest frame, mm/h. */
+        rainNowMmh: z.number().min(0).max(500).nullable(),
+      })
+      .strict(),
+    /** Nowcast rain rate at the pin every 5 minutes ahead, mm/h (up to 24 steps = 2 hours). */
+    forecastMmh: z.array(z.number().min(0).max(500)).max(24),
+    /** Nearest synoptic station the app showed, if any. */
+    station: z
+      .object({
+        name: z.string().min(1).max(60),
+        distanceKm: z.number().min(0).max(500),
+        rainHourMm: z.number().min(0).max(500).nullable(),
+        windKmh: z.number().min(0).max(500).nullable(),
+        readingAgeMin: z.number().min(0).max(10080),
+      })
+      .strict()
+      .nullable(),
+    /** Nearest CAMP gauge's 24 h rain, mm, when within range. */
+    rain24hMm: z.number().min(0).max(1000).nullable(),
+  })
+  .strict();
+
 const FreshnessEntry = z.object({ sourceTime: isoTime, stale: z.boolean() });
 
 export const ManifestSchema = z.object({
@@ -137,3 +177,4 @@ export type GroundRegion = z.infer<typeof GroundRegionSchema>;
 export type SynopticStation = z.infer<typeof SynopticStationSchema>;
 export type Ground = z.infer<typeof GroundSchema>;
 export type Manifest = z.infer<typeof ManifestSchema>;
+export type FeedbackReport = z.infer<typeof FeedbackReportSchema>;
