@@ -24,6 +24,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from nowcast import build_nowcast  # noqa: E402
 from stations import build_ground  # noqa: E402
+from synoptic import fetch_observations  # noqa: E402
 from radar import DUBLIN, SHANNON, build_frame, load_clutter_mask, make_grid, read_volume  # noqa: E402
 
 BASE = "https://opendata2.met.ie/radar"
@@ -145,12 +146,19 @@ def main() -> None:
     # Stations engine: gauge file is hourly and lags 30-90 minutes. If it fails, keep the last ground
     # file (its readings age on screen) instead of failing the radar run.
     ground = fetch_json(f"{base_url}/ground.json")
+    prev_synoptic = (ground or {}).get("synoptic", [])
     try:
         ground = build_ground(now_utc(), ground)
     except Exception as e:  # noqa: BLE001
         print(f"stations engine failed, keeping the previous ground file: {e}")
         if not ground:
             ground = {"generatedAt": nowcast["generatedAt"], "sourceTime": NEVER, "regions": []}
+    # Synoptic engine: hourly observations CSV. On failure keep the previous list (readings age on screen).
+    try:
+        ground["synoptic"] = fetch_observations(now_utc())
+    except Exception as e:  # noqa: BLE001
+        print(f"synoptic engine failed, keeping the previous list: {e}")
+        ground["synoptic"] = prev_synoptic
     with open(os.path.join(a.out, "ground.json"), "w") as fh:
         json.dump(ground, fh, separators=(",", ":"))
 
