@@ -155,6 +155,25 @@ export const FeedbackReportSchema = z
   })
   .strict();
 
+/** Anonymous usage count from the app: a WhatsApp share, or an open from a shared link (`?src=wa`).
+ * No id, no cookie, no device information. The place is rounded to 2 decimals (about 1 km) and carries
+ * the label the app showed (a town, club or park), or null for "Your location".
+ * The Worker in worker/reports/ mirrors these limits by hand; worker/reports/validate.test.mjs keeps them in step. */
+export const UsageEventSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    generatedAt: isoTime,
+    type: z.enum(["share", "open"]),
+    place: z
+      .object({
+        lat: z.number().min(51.2).max(55.6),
+        lng: z.number().min(-10.9).max(-5.2),
+        name: z.string().min(1).max(60).nullable(),
+      })
+      .strict(),
+  })
+  .strict();
+
 const FreshnessEntry = z.object({ sourceTime: isoTime, stale: z.boolean() });
 
 export const ManifestSchema = z.object({
@@ -178,3 +197,4 @@ export type SynopticStation = z.infer<typeof SynopticStationSchema>;
 export type Ground = z.infer<typeof GroundSchema>;
 export type Manifest = z.infer<typeof ManifestSchema>;
 export type FeedbackReport = z.infer<typeof FeedbackReportSchema>;
+export type UsageEvent = z.infer<typeof UsageEventSchema>;

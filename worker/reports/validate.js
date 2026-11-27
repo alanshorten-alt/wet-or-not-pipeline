@@ -32,3 +32,16 @@ export function validateReport(r) {
   if (!numOrNull(r.rain24hMm, 0, 1000)) return fail("rain24h");
   return { ok: true };
 }
+
+/** Usage event (UsageEventSchema): { ok: true } or { ok: false, error }. */
+export function validateEvent(e) {
+  const fail = (error) => ({ ok: false, error });
+  if (!isObj(e) || !keysAre(e, ["schemaVersion", "generatedAt", "type", "place"])) return fail("shape");
+  if (e.schemaVersion !== 1) return fail("schemaVersion");
+  if (!isoTime(e.generatedAt)) return fail("time");
+  if (!["share", "open"].includes(e.type)) return fail("type");
+  const p = e.place;
+  if (!isObj(p) || !keysAre(p, ["lat", "lng", "name"]) || !num(p.lat, 51.2, 55.6) || !num(p.lng, -10.9, -5.2)) return fail("place");
+  if (p.name !== null && !str(p.name, 1, 60)) return fail("place");
+  return { ok: true };
+}
