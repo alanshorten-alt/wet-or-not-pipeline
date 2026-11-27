@@ -107,3 +107,56 @@ test("file names group by place, verdict and hour", async () => {
   assert.notEqual(a, c);
   assert.match(a, /^reports\/\d{4}-\d{2}-\d{2}\/[0-9a-f]{16}\.json$/);
 });
+
+// ---- usage events (POST /event) ----
+import { UsageEventSchema } from "../../contracts/contracts.ts";
+import { validateEvent } from "./validate.js";
+
+const goodEvent = () => ({
+  schemaVersion: 1,
+  generatedAt: new Date().toISOString(),
+  type: "share",
+  place: { lat: 53.29, lng: -6.45, name: "Clondalkin" },
+});
+
+const eventMutations = {
+  good: (e) => e,
+  "open, no name": (e) => ({ ...e, type: "open", place: { ...e.place, name: null } }),
+  "bad type": (e) => ({ ...e, type: "view" }),
+  "extra key": (e) => ({ ...e, userId: "x" }),
+  "extra place key": (e) => ({ ...e, place: { ...e.place, accuracy: 5 } }),
+  "missing name": (e) => ({ ...e, place: { lat: e.place.lat, lng: e.place.lng } }),
+  "empty name": (e) => ({ ...e, place: { ...e.place, name: "" } }),
+  "long name": (e) => ({ ...e, place: { ...e.place, name: "x".repeat(61) } }),
+  "outside Ireland": (e) => ({ ...e, place: { ...e.place, lat: 48.8, lng: 2.3 } }),
+  "bad time": (e) => ({ ...e, generatedAt: "soon" }),
+  "wrong version": (e) => ({ ...e, schemaVersion: 2 }),
+};
+for (const [name, mutate] of Object.entries(eventMutations)) {
+  test(`event validator agrees with the contract: ${name}`, () => {
+    const e = mutate(goodEvent());
+    assert.equal(validateEvent(e).ok, UsageEventSchema.safeParse(e).success);
+  });
+}
+
+test("POST /event files a rounded event under a random key", async () => {
+  const e = env();
+  const body = JSON.stringify({ ...goodEvent(), place: { lat: 53.2917, lng: -6.4561, name: "Clondalkin" } });
+  const res = await worker.fetch(
+    new Request("https://w.example/event", { method: "POST", headers: { Origin: "https://wet-or-not.vercel.app" }, body }),
+    e,
+  );
+  assert.equal(res.status, 200);
+  const [[key, value]] = [...e.REPORTS.files];
+  assert.match(key, /^events\/\d{4}-\d{2}-\d{2}\/share\/[0-9a-f-]{36}\.json$/);
+  assert.deepEqual(JSON.parse(value).place, { lat: 53.29, lng: -6.46, name: "Clondalkin" });
+});
+
+test("POST /event refuses a bad event and an oversized one", async () => {
+  const e = env();
+  const post = (body) =>
+    worker.fetch(new Request("https://w.example/event", { method: "POST", headers: { Origin: "https://wet-or-not.vercel.app" }, body }), e);
+  assert.equal((await post(JSON.stringify({ ...goodEvent(), type: "view" }))).status, 400);
+  assert.equal((await post("x".repeat(2000))).status, 413);
+  assert.equal(e.REPORTS.files.size, 0);
+});

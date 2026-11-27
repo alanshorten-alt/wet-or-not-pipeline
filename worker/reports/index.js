@@ -5,9 +5,11 @@
 // PREVIEW_PREFIX / PREVIEW_SUFFIX (Vercel preview URLs of the app).
 //
 // One file per place (about 1 km), verdict and hour, so repeated taps cannot pile up files.
-import { validateReport } from "./validate.js";
+// POST /event files an anonymous usage count (share or open) as events/<day>/<type>/<random>.json.
+import { validateEvent, validateReport } from "./validate.js";
 
 const MAX_BYTES = 4096;
+const MAX_EVENT_BYTES = 1024;
 
 export function originAllowed(origin, env) {
   if (!origin) return false;
@@ -41,6 +43,33 @@ export async function reportKey(r) {
   return `reports/${r.generatedAt.slice(0, 10)}/${hash}.json`;
 }
 
+async function handleEvent(request, env, headers) {
+  const declared = Number(request.headers.get("Content-Length") || 0);
+  if (declared > MAX_EVENT_BYTES) return reply(413, { ok: false, error: "too large" }, headers);
+  const text = await request.text();
+  if (text.length > MAX_EVENT_BYTES) return reply(413, { ok: false, error: "too large" }, headers);
+  let event;
+  try {
+    event = JSON.parse(text);
+  } catch {
+    return reply(400, { ok: false, error: "json" }, headers);
+  }
+  const check = validateEvent(event);
+  if (!check.ok) return reply(400, { ok: false, error: check.error }, headers);
+  const age = Date.now() - Date.parse(event.generatedAt);
+  if (age > 24 * 3600_000 || age < -5 * 60_000) return reply(400, { ok: false, error: "time" }, headers);
+  // Round again here: never trust the phone to have done it. The key is random, so nothing links two events.
+  event.place = { lat: Math.round(event.place.lat * 100) / 100, lng: Math.round(event.place.lng * 100) / 100, name: event.place.name };
+  const key = eventKey(event, crypto.randomUUID());
+  await env.REPORTS.put(key, JSON.stringify(event), { httpMetadata: { contentType: "application/json" } });
+  return reply(200, { ok: true }, headers);
+}
+
+/** Where an event is filed: events/<day>/<type>/<id>.json. Exported for the tests. */
+export function eventKey(e, id) {
+  return `events/${e.generatedAt.slice(0, 10)}/${e.type}/${id}.json`;
+}
+
 const worker = {
   async fetch(request, env) {
     const origin = request.headers.get("Origin");
@@ -48,6 +77,9 @@ const worker = {
     const headers = cors(origin);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
     if (request.method !== "POST") return reply(405, { ok: false, error: "method" }, headers);
+
+    const path = new URL(request.url).pathname.replace(/\/+$/, "");
+    if (path === "/event") return handleEvent(request, env, headers);
 
     const declared = Number(request.headers.get("Content-Length") || 0);
     if (declared > MAX_BYTES) return reply(413, { ok: false, error: "too large" }, headers);
