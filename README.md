@@ -4,6 +4,7 @@ Public repo for the 5-minute data feed behind Wet or Not (hyperlocal rain foreca
 
 - `pipeline/` ingests Met Éireann radar (Dublin and Shannon), applies a clutter mask, runs a nowcast, writes `radar/*.json`, `nowcast.json`, `ground.json`, `manifest.json`. See `pipeline/README.md` and `pipeline/VALIDATION.md`.
 - `worker/` is a Cloudflare Worker cron that triggers `.github/workflows/radar.yml` every 5 minutes.
+- `worker/reports/` is a second Worker that receives the app's "Got it wrong" reports into a private R2 bucket (see its README).
 - `contracts/contracts.ts` defines the file formats (zod). The app keeps a synced copy.
 - R2 credentials live only in this repo's Actions secrets: `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`. Never commit them.
 

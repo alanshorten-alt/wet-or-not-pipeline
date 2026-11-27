@@ -23,5 +23,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node --check pipeline/publish.mjs
+      - run: node --check worker/reports/index.js
+      - run: node --test worker/reports/validate.test.mjs
       - name: Publisher validates against the contracts (dry run, no upload)
         run: node pipeline/publish.mjs pipeline/tests/sample --prefix test --prune --dry-run

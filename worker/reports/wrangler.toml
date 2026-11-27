@@ -1,0 +1,13 @@
+name = "wet-or-not-reports"
+main = "index.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+ALLOWED_ORIGINS = "https://wet-or-not.vercel.app"
+# Vercel preview URLs of the app, e.g. https://wet-or-not-git-saved-places-simply-ev.vercel.app
+PREVIEW_PREFIX = "https://wet-or-not-git-"
+PREVIEW_SUFFIX = "-simply-ev.vercel.app"
+
+[[r2_buckets]]
+binding = "REPORTS"
+bucket_name = "wet-or-not-reports"
