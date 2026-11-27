@@ -3,3 +3,4 @@ numpy>=1.26
 pyproj>=3.6
 pytest>=8
 opencv-python-headless>=4.9
+osmium>=4.0

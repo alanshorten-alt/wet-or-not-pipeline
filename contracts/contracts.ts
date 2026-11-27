@@ -174,6 +174,43 @@ export const UsageEventSchema = z
   })
   .strict();
 
+/** Pitch outlines from OpenStreetMap (leisure=pitch, stadium, track), exported weekly by pipeline/pitches.py.
+ * Ireland is cut into 0.25 degree cells so the app fetches only the few cells around the pin.
+ * Cell (ix, iy) covers lng PITCH_GRID.west + ix * size and lat PITCH_GRID.south + iy * size, file `pitches/<ix>_<iy>.json`.
+ * Coordinates are rounded to 5 decimals (about 1 m). Data (c) OpenStreetMap contributors, ODbL. */
+export const PITCH_GRID = { west: -11, south: 51, size: 0.25 } as const;
+
+export const PitchTileSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    generatedAt: isoTime,
+    ix: z.number().int().min(0).max(100),
+    iy: z.number().int().min(0).max(100),
+    pitches: z
+      .array(
+        z
+          .object({
+            kind: z.enum(["pitch", "stadium", "track"]),
+            /** OSM sport tag, first value only (gaelic_games, soccer, rugby_union...), or null. */
+            sport: z.string().min(1).max(30).nullable(),
+            /** Closed outline, [lng, lat] pairs; first point equals last. */
+            ring: z.array(z.tuple([z.number().min(-10.9).max(-5.2), z.number().min(51.2).max(55.6)])).min(4).max(300),
+          })
+          .strict(),
+      )
+      .max(5000),
+  })
+  .strict();
+
+/** Which pitch cells exist, so the app never requests a cell that has no file. */
+export const PitchIndexSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    generatedAt: isoTime,
+    cells: z.array(z.string().regex(/^\d{1,3}_\d{1,3}$/)).max(5000),
+  })
+  .strict();
+
 const FreshnessEntry = z.object({ sourceTime: isoTime, stale: z.boolean() });
 
 export const ManifestSchema = z.object({
@@ -198,3 +235,5 @@ export type Ground = z.infer<typeof GroundSchema>;
 export type Manifest = z.infer<typeof ManifestSchema>;
 export type FeedbackReport = z.infer<typeof FeedbackReportSchema>;
 export type UsageEvent = z.infer<typeof UsageEventSchema>;
+export type PitchTile = z.infer<typeof PitchTileSchema>;
+export type PitchIndex = z.infer<typeof PitchIndexSchema>;

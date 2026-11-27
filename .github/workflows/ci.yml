@@ -28,3 +28,7 @@ jobs:
       - run: node --test worker/reports/validate.test.mjs
       - name: Publisher validates against the contracts (dry run, no upload)
         run: node pipeline/publish.mjs pipeline/tests/sample --prefix test --prune --dry-run
+      - name: Pitch export validates against the contracts (dry run, no upload)
+        run: |
+          python pipeline/pitches.py pipeline/tests/pitches_sample.osm "$RUNNER_TEMP/pitch_out/pitches"
+          node pipeline/publish.mjs "$RUNNER_TEMP/pitch_out" --prefix test --no-manifest --dry-run

@@ -1,0 +1,46 @@
+name: Pitch outlines
+# Once a week, download the Ireland extract from Geofabrik, cut out every pitch, stadium and track outline
+# as small 0.25 degree tile files and publish them to R2 under live/pitches/. The app fetches only the few
+# cells around the pin. Data (c) OpenStreetMap contributors, ODbL.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "25 3 * * 0"
+permissions:
+  contents: read
+concurrency:
+  group: pitches
+  cancel-in-progress: false
+jobs:
+  pitches:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+      - run: pip install -r pipeline/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Download the Ireland extract
+        run: curl -fsSL --retry 4 -o "$RUNNER_TEMP/ireland.osm.pbf" https://download.geofabrik.de/europe/ireland-and-northern-ireland-latest.osm.pbf
+      - name: Cut out the pitches
+        run: python pipeline/pitches.py "$RUNNER_TEMP/ireland.osm.pbf" "$RUNNER_TEMP/pitch_out/pitches" | tee pitches.log
+      - name: Sanity check (a failed or truncated download must never wipe the live files)
+        run: |
+          N=$(grep -oE '^[0-9]+' pitches.log)
+          echo "pitches: $N"
+          test "$N" -gt 5000
+      - name: Publish to R2
+        run: node pipeline/publish.mjs "$RUNNER_TEMP/pitch_out" --prefix live --no-manifest
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}

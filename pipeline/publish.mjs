@@ -11,12 +11,14 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 import { DeleteObjectsCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { GroundSchema, ManifestSchema, NowcastSchema, RadarFrameSchema } from "../contracts/contracts.ts";
+import { GroundSchema, ManifestSchema, NowcastSchema, PitchIndexSchema, PitchTileSchema, RadarFrameSchema } from "../contracts/contracts.ts";
 
 const args = process.argv.slice(2);
 const dir = args.find((a) => !a.startsWith("--") && a !== flagValue("--prefix"));
 const dryRun = args.includes("--dry-run");
 const prune = args.includes("--prune");
+// For files that live beside the live feed but are not part of it (pitch outlines): no manifest needed.
+const noManifest = args.includes("--no-manifest");
 const prefix = (flagValue("--prefix") ?? "").replace(/^\/+|\/+$/g, "");
 
 function flagValue(name) {
@@ -34,6 +36,8 @@ function schemaFor(file) {
   if (file === "nowcast.json") return NowcastSchema;
   if (file === "ground.json") return GroundSchema;
   if (file.startsWith("radar/")) return RadarFrameSchema;
+  if (file === "pitches/index.json") return PitchIndexSchema;
+  if (file.startsWith("pitches/")) return PitchTileSchema;
   return null;
 }
 
@@ -44,7 +48,7 @@ function listFiles(root, rel = "") {
 }
 
 const files = listFiles(dir).filter((f) => f.endsWith(".json"));
-if (!files.includes("manifest.json")) {
+if (!noManifest && !files.includes("manifest.json")) {
   console.error("manifest.json is required");
   process.exit(1);
 }
@@ -68,13 +72,14 @@ for (const file of files) {
 
 // manifest.json last; short cache so freshness shows quickly. Other files get 3 minutes,
 // matching the edge cache rule on the custom domain.
-const ordered = [...files.filter((f) => f !== "manifest.json"), "manifest.json"];
-const cacheControl = (f) => (f === "manifest.json" ? "public, max-age=30" : "public, max-age=180");
+// Pitch outlines change weekly at most: a day of caching is fine.
+const ordered = noManifest ? [...files] : [...files.filter((f) => f !== "manifest.json"), "manifest.json"];
+const cacheControl = (f) => (f === "manifest.json" ? "public, max-age=30" : f.startsWith("pitches/") ? "public, max-age=86400" : "public, max-age=180");
 const key = (f) => (prefix ? `${prefix}/${f}` : f);
 
 if (dryRun) {
   for (const f of ordered) console.log(`[dry run] would upload ${key(f)} (${bodies.get(f).length} bytes, ${cacheControl(f)})`);
-  if (prune) console.log("[dry run] would prune radar frames not listed in the manifest");
+  if (prune && !noManifest) console.log("[dry run] would prune radar frames not listed in the manifest");
   process.exit(0);
 }
 
@@ -124,7 +129,7 @@ for (const f of ordered) {
 }
 
 // Optional clean-up: only objects under <prefix>/radar/ that the manifest we just wrote does not list.
-if (prune) {
+if (prune && !noManifest) {
   const keep = new Set(JSON.parse(bodies.get("manifest.json")).radarFiles.map(key));
   const listed = await s3.send(new ListObjectsV2Command({ Bucket: R2_BUCKET, Prefix: key("radar/") }));
   const stale = (listed.Contents ?? []).map((o) => o.Key).filter((k) => k && !keep.has(k));

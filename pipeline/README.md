@@ -63,3 +63,11 @@ far. A cell is only a candidate if it echoes in at least half of the dry slots o
 live `clutter_mask.json` changes only by a reviewed PR that copies the candidate over. Check
 `validate_hours.py --combine pipeline/clutter_days` for the summary. Met Éireann keeps about 7 days of
 archive; on 2026-11-27 all of 21-26 November was wet (driest hour 9.9% of cells), so nothing was collectable.
+
+## Pitch outlines
+
+`pipeline/pitches.py` reads an OpenStreetMap extract and writes pitch, stadium and track outlines as 0.25 degree tile files
+(`PitchTileSchema`, `PitchIndexSchema` in `contracts/contracts.ts`). The weekly `pitches.yml` workflow downloads Geofabrik's
+Ireland extract, runs it and publishes to `live/pitches/` with `publish.mjs --no-manifest`. It refuses to publish fewer than
+5000 pitches, so a bad download cannot wipe the live files. Only closed ways are read for now (multipolygon pitches are skipped).
+Data (c) OpenStreetMap contributors, ODbL.
