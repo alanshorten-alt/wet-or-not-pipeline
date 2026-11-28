@@ -4,7 +4,7 @@ The app's "Got it wrong" button posts one JSON snapshot here (format: `FeedbackR
 
 ## Limits it enforces
 - Only the live site and its Vercel previews can post (CORS and an `Origin` check).
-- 4 KB maximum, strict shape (unknown keys are refused), report time within the last 24 hours.
+- 4 KB maximum, strict shape (unknown keys are refused), verdict time (`generatedAt`) within the last 24 hours; optional `window` ("now" or "2h") and `reportedAt` say which the person meant.
 - One file per place (about 1 km), verdict and hour, so repeated taps overwrite nothing and add nothing.
 - It does **not** rate-limit by IP: that needs a custom domain or Cloudflare's rate-limiting binding. The worst case is bounded by the file-per-place rule and R2's low cost, but set a spend alert.
 

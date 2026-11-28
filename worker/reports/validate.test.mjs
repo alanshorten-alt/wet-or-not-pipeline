@@ -21,6 +21,10 @@ const mutations = {
   good: (r) => r,
   "no station, nulls": (r) => ({ ...r, station: null, rain24hMm: null, radar: { ...r.radar, rainNowMmh: null } }),
   "empty forecast": (r) => ({ ...r, forecastMmh: [] }),
+  "window 2h with reportedAt": (r) => ({ ...r, window: "2h", reportedAt: new Date().toISOString() }),
+  "window now": (r) => ({ ...r, window: "now" }),
+  "bad window": (r) => ({ ...r, window: "today" }),
+  "bad reportedAt": (r) => ({ ...r, reportedAt: "later" }),
   "extra top-level key": (r) => ({ ...r, userId: "x" }),
   "extra place key": (r) => ({ ...r, place: { ...r.place, name: "Home" } }),
   "missing key": ({ rain24hMm, ...r }) => r,
@@ -106,6 +110,12 @@ test("file names group by place, verdict and hour", async () => {
   assert.equal(a, b);
   assert.notEqual(a, c);
   assert.match(a, /^reports\/\d{4}-\d{2}-\d{2}\/[0-9a-f]{16}\.json$/);
+});
+
+test("a 'past 2 hours' report is kept apart from a 'now' one in the same hour", async () => {
+  const a = await reportKey(good());
+  const b = await reportKey({ ...good(), window: "2h" });
+  assert.notEqual(a, b);
 });
 
 // ---- usage events (POST /event) ----

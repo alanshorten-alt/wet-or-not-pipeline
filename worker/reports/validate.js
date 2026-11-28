@@ -9,14 +9,17 @@ const keysAre = (o, keys) => Object.keys(o).length === keys.length && keys.every
 // Same shape as zod's z.iso.datetime(): UTC, "Z" suffix, optional fractional seconds.
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
 const isoTime = (v) => typeof v === "string" && ISO.test(v) && !Number.isNaN(Date.parse(v));
+// Required keys all present, and nothing else beyond the optional ones.
+const keysWith = (o, required, optional) => required.every((k) => k in o) && Object.keys(o).every((k) => required.includes(k) || optional.includes(k));
 const str = (v, min, max) => typeof v === "string" && v.length >= min && v.length <= max;
 
 /** Returns { ok: true } or { ok: false, error }. */
 export function validateReport(r) {
   const fail = (error) => ({ ok: false, error });
-  if (!isObj(r) || !keysAre(r, ["schemaVersion", "generatedAt", "sourceTime", "place", "verdict", "radar", "forecastMmh", "station", "rain24hMm"])) return fail("shape");
+  if (!isObj(r) || !keysWith(r, ["schemaVersion", "generatedAt", "sourceTime", "place", "verdict", "radar", "forecastMmh", "station", "rain24hMm"], ["reportedAt", "window"])) return fail("shape");
   if (r.schemaVersion !== 1) return fail("schemaVersion");
-  if (!isoTime(r.generatedAt) || !isoTime(r.sourceTime)) return fail("time");
+  if (!isoTime(r.generatedAt) || !isoTime(r.sourceTime) || ("reportedAt" in r && !isoTime(r.reportedAt))) return fail("time");
+  if ("window" in r && !["now", "2h"].includes(r.window)) return fail("window");
   const { place, verdict, radar, station } = r;
   if (!isObj(place) || !keysAre(place, ["lat", "lng"]) || !num(place.lat, 51.2, 55.6) || !num(place.lng, -10.9, -5.2)) return fail("place");
   if (!isObj(verdict) || !keysAre(verdict, ["state", "text"]) || !["dry", "showers", "wet"].includes(verdict.state) || !str(verdict.text, 1, 120)) return fail("verdict");
