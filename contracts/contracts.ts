@@ -116,7 +116,10 @@ export const GroundSchema = z.object({
 });
 
 /** "Got it wrong": one tap in the app sends this snapshot of what the phone showed at the pin.
- * generatedAt is when the person tapped; sourceTime is the radar scan the verdict used.
+ * generatedAt is when the verdict was shown (the tap for window "now", or the remembered earlier showing for
+ * window "2h"); sourceTime is the radar scan that verdict used. reportedAt is when the person tapped.
+ * window says whether they meant "wrong right now" or "wrong at some point in the past 2 hours"; both fields are
+ * optional so reports from older phones still pass.
  * No name, account or device id. The pin is rounded to 2 decimals (about 1 km).
  * The Worker in worker/reports/ mirrors these limits by hand; worker/reports/validate.test.mjs keeps them in step. */
 export const FeedbackReportSchema = z
@@ -124,6 +127,8 @@ export const FeedbackReportSchema = z
     schemaVersion: z.literal(1),
     generatedAt: isoTime,
     sourceTime: isoTime,
+    reportedAt: isoTime.optional(),
+    window: z.enum(["now", "2h"]).optional(),
     place: z.object({ lat: z.number().min(51.2).max(55.6), lng: z.number().min(-10.9).max(-5.2) }).strict(),
     verdict: z
       .object({ state: z.enum(["dry", "showers", "wet"]), text: z.string().min(1).max(120) })

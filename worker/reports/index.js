@@ -39,7 +39,7 @@ async function sha256Hex(text) {
 /** Where a report is filed: reports/<day>/<hash>.json. Exported for the tests. */
 export async function reportKey(r) {
   const hour = r.generatedAt.slice(0, 13);
-  const hash = (await sha256Hex(`${r.place.lat.toFixed(2)}|${r.place.lng.toFixed(2)}|${r.verdict.state}|${hour}`)).slice(0, 16);
+  const hash = (await sha256Hex(`${r.place.lat.toFixed(2)}|${r.place.lng.toFixed(2)}|${r.verdict.state}|${hour}|${r.window ?? "now"}`)).slice(0, 16);
   return `reports/${r.generatedAt.slice(0, 10)}/${hash}.json`;
 }
 
